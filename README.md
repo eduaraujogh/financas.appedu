@@ -9,22 +9,22 @@ banco e guarda os dados num repositório privado seu no GitHub.
 index.html              o app inteiro (Chart.js e pdf.js embutidos, sem CDN)
 manifest.webmanifest    faz virar app instalável no celular
 sw.js                   service worker: abre offline
-icons/                  ícones da tela de início
+icon-*.png              ícones da tela de início
 ```
 
-## Passo 1 — repositório PÚBLICO para o app
+**No ar em:** https://eduaraujogh.github.io/financas.appedu/
+
+## Passo 1 — repositório PÚBLICO para o app ✅ feito
 
 No plano grátis do GitHub, o Pages só publica de repositório público. Por isso o
 app e os dados moram separados: aqui vai só o código, que não tem nada seu dentro.
 
-1. Crie um repositório **público** chamado `financas-app`.
-2. Suba estes arquivos mantendo a estrutura (`index.html` na raiz, pasta `icons/` do lado).
-3. Em **Settings → Pages**, escolha **Deploy from a branch**, ramo `main`, pasta `/ (root)`. Salve.
-4. Em um ou dois minutos o site sobe em `https://SEU-USUARIO.github.io/financas-app/`.
+Já está no ar em `eduaraujogh/financas.appedu`, com Pages ligado no ramo `main`, raiz.
+Para atualizar depois, suba o `index.html` novo por cima.
 
 ## Passo 2 — repositório PRIVADO para os dados
 
-1. Crie um repositório **privado** chamado `financas-dados`.
+1. Crie um repositório **privado** chamado `financas-dados`. **Este passo ainda falta.**
 2. Não precisa colocar nada dentro. O app cria o arquivo `dados/estado.json` sozinho no primeiro salvamento.
 
 Cada alteração vira um commit nesse repositório. O histórico do Git é o seu backup:

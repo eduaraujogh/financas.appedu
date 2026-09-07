@@ -401,6 +401,50 @@ input[aria-invalid="true"]{border-color:var(--red)}
 .ensinar select{width:100%;background:var(--surface);border:1px solid var(--line-2);color:var(--ink);
   border-radius:6px;padding:7px 8px;font:inherit;font-size:13px}
 .ensinar .vals{display:block;font-size:11px;color:var(--muted);margin-top:3px;font-weight:400}
+/* ---- importação em passos ---- */
+.passos{display:flex;align-items:center;gap:10px;margin:-4px 0 18px;flex-wrap:wrap}
+.passos em{color:var(--line-2);font-style:normal}
+.pas{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.pas i{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;font-style:normal;
+  font-size:11px;font-weight:700;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.pas.on{color:var(--ink);font-weight:600}
+.pas.on i{background:var(--acc);border-color:transparent;color:var(--acc-ink)}
+.pas.feito i{background:var(--acc-soft);border-color:transparent;color:var(--acc)}
+.periodo{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px}
+@media(max-width:640px){.periodo{grid-template-columns:1fr}}
+
+.secao{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;background:var(--surface-2)}
+.secao.aberta{background:transparent}
+.sechead{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;border:0;cursor:pointer;
+  background:transparent;color:var(--ink);font:inherit;text-align:left}
+.sechead:hover{background:var(--surface-2)}
+.sechead .seta{font-style:normal;color:var(--muted);width:12px}
+.sechead b{font-size:14px}
+.sechead .cnt{background:var(--surface-3,var(--surface));border:1px solid var(--line);border-radius:999px;
+  padding:2px 9px;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.sechead .tot{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px}
+.sechead .mrk{font-size:11.5px;color:var(--muted);min-width:96px;text-align:right}
+.secbody{padding:0 16px 16px}
+.secajuda{margin:0 0 12px;font-size:12.5px;color:var(--muted);max-width:76ch}
+
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;
+  letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;cursor:help}
+.tag.parc{background:rgba(96,165,250,.14);color:#60A5FA}
+.tag.dup{background:var(--amber-soft,rgba(251,191,36,.14));color:var(--amber)}
+.tag.hab{background:var(--acc-soft);color:var(--acc)}
+.tag.conf{background:var(--amber-soft,rgba(251,191,36,.14));color:var(--amber)}
+.tag.semcat{background:var(--red-soft);color:var(--red)}
+.semparc{color:var(--muted);display:block;text-align:center}
+
+.confer2{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:6px 0 4px;background:var(--surface-2)}
+.confer2>summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--ink)}
+.confer2>summary::marker{color:var(--muted)}
+
+.rodape{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-top:18px;padding:14px 0 2px;border-top:1px solid var(--line);background:var(--surface)}
+.rtot span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rtot div{font-size:15px;margin-top:3px}
 .ghok{background:var(--acc-soft);border-radius:10px;padding:12px 14px}
 .ghok b{color:var(--acc);font-size:13.5px}
 .ghok p{margin:5px 0 0;font-size:12px;color:var(--muted);line-height:1.45}
@@ -2245,6 +2289,26 @@ function valorNum(t){
   const v=parseFloat(t.replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.'));
   return {v:isNaN(v)?null:v, neg};
 }
+/* "FINANCIAMENTO VEICULO PARC 21/48" é a parcela 21 de 48 — mas "PAY FAST 28/08"
+   é uma data. Para não confundir: ignoro o trecho já usado como data da compra e
+   só aceito x/y quando y passa de 12 (não pode ser mês) ou quando a linha diz
+   PARC/PARCELA na frente. Na dúvida, não invento parcela. */
+function achaParcela(desc, jaUsado){
+  /* roda no texto CRU: normTxt troca a barra por espaço e "21/48" viraria "21 48",
+     que é indistinguível de uma data. */
+  let t=String(desc||'');
+  if(jaUsado) t=t.replace(jaUsado,' ');
+  const semAcento=t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  const temPalavra=/PARC/.test(semAcento);
+  let m=t.match(/(\d{1,2})\s*\/\s*(\d{1,3})/);
+  if(!m) m=semAcento.match(/(\d{1,2})\s+DE\s+(\d{1,3})/);
+  if(!m) return {restantes:null,txt:''};
+  const atual=+m[1], total=+m[2];
+  if(!(total>=atual && total<=99 && atual>=1)) return {restantes:null,txt:''};
+  if(total<=12 && !temPalavra) return {restantes:null,txt:''};   /* pode ser data */
+  return {restantes: total-atual+1, txt: atual+'/'+total};
+}
+
 function lerLinhas(linhas){
   const ano=anoDoExtrato(linhas), fora=[], achados=[];
   /* O Itaú marca saída com sinal negativo e entrada sem sinal. Quando o extrato
@@ -2271,16 +2335,19 @@ function lerLinhas(linhas){
     /* "PAY JIM C 09/08" lançado em 10/08 é uma compra do dia 9: a data que
        interessa é a da compra, e é ela que o extrato carrega na descrição. */
     const m2=desc.match(/(\d{2})\/(\d{2})\s*$/);
+    let usouData=null;
     if(m2){
       const d2=+m2[1], mm=+m2[2];
       if(d2>=1&&d2<=31&&mm>=1&&mm<=12){
         const a2=mm<=mes?anoL:anoL-1;
         data=`${a2}-${String(mm).padStart(2,'0')}-${String(d2).padStart(2,'0')}`;
+        usouData=m2[0];
       }
     }
+    const pc=achaParcela(desc, usouData);
     const ehCredito = usaSinal ? !neg : CREDITO.some(c=>N.indexOf(c)>=0);
     if(ehCredito){ fora.push({data,desc,val:v}); continue; }
-    achados.push({data,desc,val:v});
+    achados.push({data,desc,val:v,parc:pc.restantes,parcTxt:pc.txt});
   }
   return {achados,fora};
 }
@@ -2350,8 +2417,21 @@ function analisarDuplicatas(cands,tipo,casados){
   });
 }
 
-/* ---------- fluxo ---------- */
+/* ---------- fluxo de importação, em três passos ----------
+   1. Período   — você escolhe o que do extrato entra
+   2. Categorias — ensina os comércios que eu não conheço
+   3. Revisão   — confere e adiciona
+   Antes era tudo numa tela só, empilhado. Um passo de cada vez cabe na cabeça. */
 function abrirImport(){ document.getElementById('fimpf').click(); }
+
+const impRow=id=>(_imp.todas||[]).find(r=>r.id===id);
+/* campo de valor em pt-BR: aceita "1.234,56" e "1234.56", devolve número */
+const brlCampo=v=>(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function numBr(t){
+  let x=String(t).replace(/[^\d.,-]/g,'');
+  if(x.indexOf(',')>=0) x=x.replace(/\./g,'').replace(',','.');
+  return parseFloat(x)||0;
+}
 
 async function importarExtrato(el){
   const f=el.files&&el.files[0]; el.value='';
@@ -2361,98 +2441,162 @@ async function importarExtrato(el){
     const buf=await f.arrayBuffer();
     const linhas=await pdfLinhas(buf);
     const {achados,fora}=lerLinhas(linhas);
-    if(!achados.length){
-      _imp={arquivo:f.name,rows:[],fora:fora.length,foraVal:0,vazio:true,bruto:linhas.slice(0,40)};
-      irPara('lanc'); toast('Não reconheci lançamentos nesse PDF. Veja o diagnóstico.',false); return;
+    if(!achados.length&&!fora.length){
+      _imp={arquivo:f.name,passo:0,todas:[],rows:[],vazio:true,bruto:linhas.slice(0,40)};
+      irPara('lanc'); toast('Não reconheci lançamentos nesse PDF.',false); return;
     }
     const casados=new Set();
     const idx=indiceHistorico(), dd=analisarDuplicatas(achados,'s',casados), de=analisarDuplicatas(fora,'e',casados);
-    const rows=achados.map((c,i)=>{
+    let n=0;
+    const todas=achados.map((c,i)=>{
       const g=classificar(c.desc,idx), d=dd[i];
-      return {i,ent:false,data:c.data,desc:c.desc,val:c.val,catId:g.catId,sug:g.catId,conf:g.conf,via:g.via,
+      return {id:n++,ent:false,data:c.data,desc:c.desc,val:c.val,parc:c.parc||null,parcTxt:c.parcTxt||'',
+              catId:g.catId,sug:g.catId,conf:g.conf,via:g.via,
               dupTipo:d.tipo,dupTxt:d.nota,on:d.tipo!=='dup'&&d.tipo!=='dupv'};
     });
-    /* Entradas vêm desmarcadas de propósito: se a sua renda fixa já está
-       configurada, marcar o salário contaria o mesmo dinheiro duas vezes. */
+    /* Entradas vêm desmarcadas de propósito: se a renda fixa já está configurada,
+       marcar o salário contaria o mesmo dinheiro duas vezes. */
     fora.forEach((c,k)=>{
-      const d=de[k], jaDup=d.tipo==='dup'||d.tipo==='dupv';
-      rows.push({i:rows.length,ent:true,data:c.data,desc:c.desc,val:c.val,
-        catId:origemDe(c.desc),sug:origemDe(c.desc),conf:'ent',via:'entrada — marque para registrar',
+      const d=de[k];
+      todas.push({id:n++,ent:true,data:c.data,desc:c.desc,val:c.val,parc:null,parcTxt:'',
+        catId:origemDe(c.desc),sug:origemDe(c.desc),conf:'ent',via:'entrada',
         dupTipo:d.tipo,dupTxt:d.nota,on:false});
     });
-    const datas=[...achados,...fora].map(x=>x.data).sort();
-    const de1=datas[0], de2=datas[datas.length-1];
-    /* O que está no painel dentro do período do extrato e o banco não conhece.
-       É aqui que aparece lançamento duplicado, valor digitado errado ou gasto
-       que saiu de outra conta. */
-    const sobra=S.lanc.filter(l=>l.data>=de1&&l.data<=de2&&!casados.has(l.id))
-                      .sort((a,b)=>b.val-a.val);
-    _imp={arquivo:f.name,rows,fora:fora.length,foraVal:fora.reduce((a,x)=>a+x.val,0),vazio:false,
-          de1,de2,sobra,saldoBanco:saldoDoExtrato(linhas),
-          totalSai:achados.reduce((a,x)=>a+x.val,0), totalEnt:fora.reduce((a,x)=>a+x.val,0)};
-    irPara('lanc');   /* o botão é global: traz você para Transações */
-    toast(`${rows.length} lançamento(s) lidos. Confira antes de adicionar.`,false);
+    const datas=todas.map(x=>x.data).sort();
+    _imp={arquivo:f.name,passo:1,todas,rows:[],vazio:false,casados,
+          d1:datas[0], d2:datas[datas.length-1],
+          de1:datas[0], de2:datas[datas.length-1],
+          saldoBanco:saldoDoExtrato(linhas),
+          aberto:{nova:true,dup:false,ent:false}};
+    impFiltrar();
+    irPara('lanc');
   }catch(e){
     toast('Não consegui ler esse PDF: '+(e&&e.message||'erro'),false);
   }
 }
 
-function impSet(i,campo,valor){
-  const r=_imp.rows[i]; if(!r) return;
-  if(campo==='val'){ r.val=parseFloat(valor)||0; setTimeout(impPinta,0); }
-  else r[campo]=valor;
-  if(campo==='catId') { r.conf=r.catId===r.sug?r.conf:'sua'; document.getElementById('impVia'+i)&&(document.getElementById('impVia'+i).textContent='ajustado por você'); }
+/* ---------- passo 1: período ---------- */
+function impPeriodo(campo,valor){
+  if(!valor) return;
+  _imp[campo]=valor;
+  if(_imp.de1>_imp.de2){ if(campo==='de1') _imp.de2=_imp.de1; else _imp.de1=_imp.de2; }
+  impFiltrar(); render();
 }
-/* Agrupa por comércio: 53 linhas viram ~20 lojas. Você ensina cada uma UMA vez
-   e a regra vale para todas as linhas dela — e para todos os extratos futuros. */
+function impPreset(qual){
+  const hoje0=_imp.d2;
+  if(qual==='tudo'){ _imp.de1=_imp.d1; _imp.de2=_imp.d2; }
+  if(qual==='mes'){
+    const ym=S.cfg.mesAtivo;
+    _imp.de1=[_imp.d1, ym+'-01'].sort().pop();
+    _imp.de2=[_imp.d2, ym+'-'+pad(diasNoMes(ym))].sort().shift();
+  }
+  if(qual==='15'||qual==='30'){
+    const d=new Date(hoje0+'T12:00'); d.setDate(d.getDate()-(+qual-1));
+    const ini=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    _imp.de1=[_imp.d1,ini].sort().pop(); _imp.de2=_imp.d2;
+  }
+  impFiltrar(); render();
+}
+function impFiltrar(){
+  const R=_imp.todas.filter(r=>r.data>=_imp.de1&&r.data<=_imp.de2);
+  _imp.rows=R;
+  _imp.totalSai=R.filter(r=>!r.ent).reduce((a,r)=>a+r.val,0);
+  _imp.totalEnt=R.filter(r=>r.ent).reduce((a,r)=>a+r.val,0);
+  _imp.sobra=S.lanc.filter(l=>l.data>=_imp.de1&&l.data<=_imp.de2&&!_imp.casados.has(l.id))
+                   .sort((a,b)=>b.val-a.val);
+}
+function impIrPasso(n){
+  if(n===2&&!impDesconhecidos().length) n=3;
+  _imp.passo=n; render();
+  const el=document.getElementById('p-lanc'); if(el) el.scrollIntoView({block:'start'});
+}
+
+/* ---------- passo 2: ensinar comércios ---------- */
 const nomeLoja=d=>String(d||'').replace(/\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,'').trim()||d;
 function impDesconhecidos(){
   const g={};
-  for(const r of _imp.rows){
+  for(const r of (_imp.rows||[])){
     if(r.ent||r.conf!=='baixa') continue;
     const k=chaveDesc(r.desc)||r.desc;
-    (g[k]=g[k]||{k,desc:r.desc,n:0,total:0,catId:r.catId,idx:[],vals:[]});
-    g[k].n++; g[k].total+=(+r.val||0); g[k].idx.push(r.i); g[k].vals.push(+r.val||0);
+    (g[k]=g[k]||{k,desc:r.desc,n:0,total:0,ids:[],vals:[]});
+    g[k].n++; g[k].total+=(+r.val||0); g[k].ids.push(r.id); g[k].vals.push(+r.val||0);
   }
   return Object.values(g).sort((a,b)=>b.total-a.total);
 }
 function impEnsinar(k,catId){
+  if(!catId) return;
   const g=impDesconhecidos().find(x=>x.k===k); if(!g) return;
-  for(const i of g.idx){
-    const r=_imp.rows[i]; if(!r) continue;
-    r.catId=catId; r.conf='sua'; r.via='você ensinou nesta importação';
-    const tr=document.getElementById('impR'+i);
-    if(tr){ const sel=tr.querySelector('select'); if(sel) sel.value=catId;
-            const via=tr.querySelector('.via'); if(via){via.textContent='você ensinou nesta importação';via.className='via alta';} }
+  for(const id of g.ids){
+    const r=impRow(id); if(!r) continue;
+    r.catId=catId; r.conf='sua'; r.via='você ensinou';
   }
   const el=document.getElementById('ens_'+CSS.escape(k));
   if(el) el.classList.add('feito');
-  const c=document.getElementById('ensN');
-  if(c) c.textContent=impDesconhecidos().filter(x=>_imp.rows[x.idx[0]].conf==='baixa').length;
+  const c=document.getElementById('ensN'); if(c) c.textContent=impDesconhecidos().length;
+  const b=document.getElementById('ensOk');
+  if(b) b.textContent=impDesconhecidos().length?'Continuar mesmo assim':'Continuar';
 }
-function impDups(){ return _imp.rows.filter(r=>r.dupTipo==='dup'||r.dupTipo==='dupv'); }
-/* nada aqui chama render(): re-render joga a rolagem para o topo e você perde o lugar */
+
+/* ---------- passo 3: revisão ---------- */
+function impSet(id,campo,valor){
+  const r=impRow(id); if(!r) return;
+  if(campo==='val'){ r.val=numBr(valor); setTimeout(impPinta,0); }
+  else if(campo==='parc'){ const v=parseInt(valor); r.parc=v>0?v:null; }
+  else r[campo]=valor;
+  if(campo==='catId'&&r.catId!==r.sug){ r.conf='sua'; r.via='ajustado por você';
+    const tr=document.getElementById('impR'+id);
+    const tag=tr&&tr.querySelector('.tag.semcat'); if(tag) tag.remove();
+  }
+}
+function impDups(){ return (_imp.rows||[]).filter(r=>r.dupTipo==='dup'||r.dupTipo==='dupv'); }
+/* nada aqui chama render(): re-render joga a rolagem para o topo */
 function impPinta(){
-  const R=_imp.rows, on=R.filter(r=>r.on), soma=on.reduce((a,r)=>a+(r.ent?0:(+r.val||0)),0);
+  const R=_imp.rows, on=R.filter(r=>r.on);
+  const soma=on.reduce((a,r)=>a+(r.ent?0:(+r.val||0)),0);
+  const somaE=on.filter(r=>r.ent).reduce((a,r)=>a+(+r.val||0),0);
   R.forEach(r=>{
-    const tr=document.getElementById('impR'+r.i); if(!tr) return;
+    const tr=document.getElementById('impR'+r.id); if(!tr) return;
     tr.classList.toggle('off',!r.on);
     const cx=tr.querySelector('input[type=checkbox]'); if(cx) cx.checked=r.on;
   });
   const b=document.getElementById('impOk');
-  if(b) b.textContent=`Adicionar ${on.length} transação(ões) · ${BRL2(soma)}`;
+  if(b) b.textContent=`Adicionar ${on.length} lançamento(s)`;
+  const t=document.getElementById('impTot');
+  if(t) t.innerHTML=`<b>${BRL2(soma)}</b> em saídas${somaE?` · <b style="color:var(--acc)">${BRL2(somaE)}</b> em entradas`:''}`;
 }
-function impDesmarcarDups(){ impDups().forEach(r=>r.on=false); impPinta(); }
-function impDescartarDups(){
-  const n=impDups().length;
-  _imp.rows=_imp.rows.filter(r=>r.dupTipo!=='dup'&&r.dupTipo!=='dupv');
-  render(); toast(n+' duplicata(s) descartada(s) da lista.',false);
+function impToggle(id){ const r=impRow(id); if(r){ r.on=!r.on; impPinta(); } }
+function impGrupo(g,v){
+  _imp.rows.forEach(r=>{ if(impGrupoDe(r)===g) r.on=v; });
+  impPinta();
 }
+const impGrupoDe=r=>r.ent?'ent':(r.dupTipo==='dup'||r.dupTipo==='dupv')?'dup':'nova';
+function impAbrir(g){ _imp.aberto[g]=!_imp.aberto[g]; render(); }
+function impCancelar(){ _imp=null; render(); }
+
+function impConfirmar(){
+  const sel=_imp.rows.filter(r=>r.on&&r.val>0&&r.data);
+  if(!sel.length){ toast('Nada selecionado.',false); return; }
+  S.regras=S.regras||{};
+  let aprend=0;
+  for(const r of sel) if(!r.ent&&r.catId!==r.sug){ const k=chaveDesc(r.desc); if(k){ S.regras[k]=r.catId; aprend++; } }
+  const n=sel.length;
+  comUndo(`${n} lançamento(s) importado(s)${aprend?` · ${aprend} regra(s) aprendida(s)`:''}.`,()=>{
+    for(const r of sel) S.lanc.push({id:uid(),catId:r.catId,val:+r.val,data:r.data,desc:r.desc,
+                                     parc:r.ent?null:(r.parc||null),tipo:r.ent?'e':'s'});
+  });
+  _imp=null; render();
+}
+
 function impRemoverSobra(id){
   const l=S.lanc.find(x=>x.id===id); if(!l) return;
   _imp.sobra=_imp.sobra.filter(x=>x.id!==id);
   const a=snap(); S.lanc=S.lanc.filter(x=>x.id!==id); _undo=a;
   salvar(); render(); toast(`"${l.desc}" removida do painel.`);
+}
+function impUsarSaldo(){
+  const v=_imp.saldoBanco; if(v===null||v===undefined) return;
+  S.cfg.conta=v; S.cfg.contaEm=_imp.de2; salvar(); render();
+  toast('Saldo em conta gravado: '+BRL2(v)+'.',false);
 }
 async function impAjustarTudo(){
   const so=_imp.sobra||[], soV=so.reduce((a,l)=>a+l.val,0);
@@ -2464,7 +2608,7 @@ async function impAjustarTudo(){
   det.push(['Adicionar',`${nS} saída(s) e ${nE} entrada(s) do extrato`]);
   const semCat=novas.filter(r=>!r.ent&&r.conf==='baixa');
   if(semCat.length) det.push(['Sem categoria',
-    `${semCat.length} lançamento(s) · ${BRL2(semCat.reduce((a,r)=>a+(+r.val||0),0))} entram como Imprevistos — dá para ensinar antes, no bloco acima`]);
+    `${semCat.length} lançamento(s) · ${BRL2(semCat.reduce((a,r)=>a+(+r.val||0),0))} entram como Imprevistos`]);
   det.push(['Renda do mês','passa a vir das entradas lançadas, e não do valor fixo']);
   if(sb!==null&&sb!==undefined) det.push(['Saldo em conta',`${BRL2(sb)} em ${dCurto(_imp.de2)} ${mCurto(_imp.de2)}`]);
   const ok=await confirmar({titulo:'Deixar o painel igual ao banco',
@@ -2475,39 +2619,25 @@ async function impAjustarTudo(){
   comUndo(`Painel ajustado pelo extrato · ${so.length} removido(s), ${novas.length} adicionado(s).`,()=>{
     S.lanc=S.lanc.filter(l=>!ids.has(l.id));
     for(const r of novas)
-      S.lanc.push({id:uid(),catId:r.catId,val:+r.val,data:r.data,desc:r.desc,parc:null,tipo:r.ent?'e':'s'});
+      S.lanc.push({id:uid(),catId:r.catId,val:+r.val,data:r.data,desc:r.desc,
+                   parc:r.ent?null:(r.parc||null),tipo:r.ent?'e':'s'});
     S.cfg.rendaLancada=true;
     if(sb!==null&&sb!==undefined){ S.cfg.conta=sb; S.cfg.contaEm=_imp.de2; }
   });
   _imp=null; render();
 }
-function impUsarSaldo(){
-  const v=_imp.saldoBanco; if(v===null||v===undefined) return;
-  setCfg('conta',v); toast('Saldo em conta atualizado para '+BRL2(v)+'.',false);
-}
-function impToggle(i){ const r=_imp.rows[i]; if(r){ r.on=!r.on; impPinta(); } }
-function impTodos(v){ _imp.rows.forEach(r=>r.on=v); impPinta(); }
-function impCancelar(){ _imp=null; render(); }
 
-function impConfirmar(){
-  const sel=_imp.rows.filter(r=>r.on&&r.val>0&&r.data);
-  if(!sel.length){ toast('Nada selecionado.',false); return; }
-  /* aprende com o que você corrigiu: vale para todo extrato futuro */
-  S.regras=S.regras||{};
-  let aprend=0;
-  for(const r of sel) if(!r.ent&&r.catId!==r.sug){ const k=chaveDesc(r.desc); if(k){ S.regras[k]=r.catId; aprend++; } }
-  const n=sel.length;
-  comUndo(`${n} transação(ões) importadas${aprend?` · ${aprend} regra(s) aprendida(s)`:''}.`,()=>{
-    for(const r of sel) S.lanc.push({id:uid(),catId:r.catId,val:+r.val,data:r.data,desc:r.desc,parc:null,tipo:r.ent?'e':'s'});
-  });
-  _imp=null; render();
+/* ═════════ telas da importação ═════════ */
+function impCabeca(passo){
+  const passos=[[1,'Período'],[2,'Categorias'],[3,'Revisão']];
+  return `<div class="ch"><span class="lbl">Importar extrato · ${esc(_imp.arquivo)}</span></div>
+    <div class="passos">${passos.map(([n,nome])=>`
+      <div class="pas ${n===passo?'on':n<passo?'feito':''}">
+        <i>${n<passo?'✓':n}</i><span>${nome}</span>
+      </div>`).join('<em>·</em>')}</div>`;
 }
 
-/* ---------- tela de revisão (tudo editável) ---------- */
 function vImport(){
-  const R=_imp.rows, on=R.filter(r=>r.on), soma=on.reduce((a,r)=>a+ (+r.val||0),0);
-  const dups=R.filter(r=>r.dupTipo==='dup'||r.dupTipo==='dupv').length, habitos=R.filter(r=>r.dupTipo==='habito').length,
-        talvez=R.filter(r=>r.dupTipo==='talvez').length, baixa=R.filter(r=>r.conf==='baixa').length;
   if(_imp.vazio) return `<div class="card">
       <div class="ch"><span class="lbl">Importar extrato · ${esc(_imp.arquivo)}</span></div>
       <div class="empty"><i aria-hidden="true">◍</i>
@@ -2516,88 +2646,183 @@ function vImport(){
       <pre style="max-height:220px;overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;font:11px/1.5 ui-monospace,monospace;color:var(--ink-2);white-space:pre-wrap">${esc((_imp.bruto||[]).join('\n'))}</pre>
       <div class="row" style="margin-top:14px"><button class="btn g" type="button" onclick="impCancelar()">Fechar</button></div>
     </div>`;
+  if(_imp.passo===1) return vImpPeriodo();
+  if(_imp.passo===2) return vImpCategorias();
+  return vImpRevisao();
+}
+
+/* ---- passo 1 ---- */
+function vImpPeriodo(){
+  const R=_imp.rows, sai=R.filter(r=>!r.ent), ent=R.filter(r=>r.ent);
+  const fora=_imp.todas.length-R.length;
   return `<div class="card">
-    <div class="ch"><span class="lbl">Revisar importação · ${esc(_imp.arquivo)}</span></div>
-    <p class="hint" style="margin:0 0 14px">
-      ${R.filter(r=>!r.ent).length} saída(s) e ${R.filter(r=>r.ent).length} entrada(s) lidas${_imp.foraVal?` · entradas somam <b style="color:var(--acc)">${BRL2(_imp.foraVal)}</b>, desmarcadas para você não contar renda em dobro`:''}${dups?` · <b style="color:var(--amber)">${dups} duplicata(s) desmarcada(s)</b>`:''}${habitos?` · <b style="color:var(--acc)">${habitos} compra(s) recorrente(s) mantida(s)</b>`:''}${talvez?` · <b style="color:var(--amber)">${talvez} para conferir</b>`:''}${baixa?` · <b style="color:var(--red)">${baixa} sem categoria certa</b>`:''}.
-      Tudo aqui é editável: mude data, descrição, categoria ou valor antes de confirmar. O que você corrigir vira regra para as próximas importações.
-    </p>
-    ${(()=>{
-      const sb=_imp.saldoBanco, so=_imp.sobra||[], soV=so.reduce((a,l)=>a+l.val,0);
-      const meu=S.lanc.filter(l=>l.data>=_imp.de1&&l.data<=_imp.de2&&!ehEnt(l)).reduce((a,l)=>a+l.val,0);
-      return `<div class="confer">
-        <div class="ch" style="margin:0 0 10px"><span class="lbl">Conferência com o banco · ${dCurto(_imp.de1)} ${mCurto(_imp.de1)} a ${dCurto(_imp.de2)} ${mCurto(_imp.de2)}</span></div>
-        <div class="cgrid">
-          <div><span>Saídas no extrato</span><b>${BRL2(_imp.totalSai||0)}</b></div>
-          <div><span>Entradas no extrato</span><b class="ok">${BRL2(_imp.totalEnt||0)}</b></div>
-          <div><span>Saídas no seu painel</span><b class="${Math.abs(meu-(_imp.totalSai||0))>0.5?'alerta':''}">${BRL2(meu)}</b>
-            <i>${Math.abs(meu-(_imp.totalSai||0))>0.5?(meu>(_imp.totalSai||0)?BRL2(meu-(_imp.totalSai||0))+' a mais que o banco':BRL2((_imp.totalSai||0)-meu)+' a menos que o banco'):'bate com o banco'}</i></div>
-          ${sb!==null&&sb!==undefined?`<div><span>Saldo em conta (banco)</span><b class="ok">${BRL2(sb)}</b>
-            <i><button class="lnk" type="button" onclick="impUsarSaldo()">usar como saldo do painel</button></i></div>`:''}
-        </div>
-        <div class="row compacta" style="margin-top:14px">
-          <button class="btn" style="flex:0 0 auto;width:max-content" type="button" onclick="impAjustarTudo()">Deixar o painel igual ao banco</button>
-        </div>
-        <p class="hint" style="margin:8px 0 0">Remove o que sobra, lança o que falta (entradas inclusive), passa a renda para os lançamentos e grava o saldo em conta — tudo de uma vez, com Desfazer.</p>
-        ${so.length?`<div class="sobra">
-          <b>${so.length} lançamento(s) do painel não aparecem neste extrato · ${BRL2(soV)}</b>
-          <p>Pode ser gasto de outra conta ou em dinheiro — ou o lançamento repetido que está inflando o seu mês. Confira e remova o que não deveria estar lá.</p>
-          <div class="scroll" style="max-height:230px"><table class="tbl"><tbody>
-          ${so.map(l=>`<tr><td><b>${esc(l.desc||rotulo(l).nome)}</b></td>
-            <td>${esc(rotulo(l).nome)}</td>
-            <td class="c num">${dCurto(l.data)} ${mCurto(l.data)}</td>
-            <td class="r num" style="font-weight:700">${ehEnt(l)?'+ ':''}${BRL2(l.val)}</td>
-            <td class="r"><button class="btn sm d" style="flex:0 0 auto;width:max-content" type="button" onclick="impRemoverSobra(${l.id})">Remover</button></td></tr>`).join('')}
-          </tbody></table></div>
-        </div>`:`<p class="hint" style="margin:10px 0 0">Tudo que está no painel neste período tem correspondência no extrato.</p>`}
-      </div>`})()}
+    ${impCabeca(1)}
+    <p class="hint" style="margin:0 0 18px">O extrato vai de <b>${dLongo(_imp.d1)}</b> a <b>${dLongo(_imp.d2)}</b>,
+    com ${_imp.todas.length} lançamentos. Escolha o pedaço que você quer trazer.</p>
 
-    ${(()=>{const des=impDesconhecidos(); if(!des.length) return '';
-      const tot=des.reduce((a,g)=>a+g.total,0);
-      return `<div class="ensinar">
-        <div class="ch" style="margin:0 0 4px"><span class="lbl">Comércios que eu não conheço · <span id="ensN">${des.length}</span></span></div>
-        <p>São ${des.length} comércios, agrupados — a coluna da direita é a <b>soma</b> dos lançamentos de cada um,
-        não um valor único. Juntos somam ${BRL2(tot)} e cairiam em Imprevistos. Escolha a categoria de cada comércio
-        <b>uma vez</b>: vale para todas as linhas dele agora e para todos os extratos daqui pra frente.</p>
-        <div class="scroll" style="max-height:280px"><table class="tbl">
-        <thead><tr><th>Comércio</th><th class="c">Lançamentos</th><th class="r">Soma dos ${des.length>1?'lançamentos':'lançamento'}</th><th>Categoria</th></tr></thead>
-        <tbody>
-        ${des.map(g=>`<tr id="ens_${esc(g.k)}">
-          <td><b>${esc(nomeLoja(g.desc))}</b>${g.n>1?`<span class="vals">${g.vals.slice(0,6).map(v=>BRL2(v)).join(' + ')}${g.vals.length>6?' + …':''}</span>`:''}</td>
-          <td class="c num">${g.n}</td>
-          <td class="r num" style="font-weight:700">${BRL2(g.total)}</td>
-          <td style="width:190px"><select onchange="impEnsinar('${esc(g.k).replace(/'/g,"\\'")}',this.value)">
-            <option value="">escolher…</option>
-            ${S.cats.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}
-          </select></td></tr>`).join('')}
-        </tbody></table></div>
-      </div>`})()}
-
-    <div class="row compacta" style="margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impTodos(true)">Marcar todos</button>
-      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impTodos(false)">Desmarcar todos</button>
-      ${dups?`<button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impDesmarcarDups()">Desmarcar duplicados (${dups})</button>
-      <button class="btn sm d" style="flex:0 0 auto;width:max-content" type="button" onclick="impDescartarDups()">Descartar duplicados (${dups})</button>`:''}
+    <div class="periodo">
+      <div class="f"><label for="pd1">A partir de</label>
+        <input id="pd1" type="date" value="${_imp.de1}" min="${_imp.d1}" max="${_imp.d2}"
+               onchange="impPeriodo('de1',this.value)"></div>
+      <div class="f"><label for="pd2">Até</label>
+        <input id="pd2" type="date" value="${_imp.de2}" min="${_imp.d1}" max="${_imp.d2}"
+               onchange="impPeriodo('de2',this.value)"></div>
     </div>
-    <div class="scroll impbox"><table class="tbl imp">
-      <thead><tr><th style="width:34px"></th><th style="width:132px">Data</th><th>Descrição</th><th style="width:170px">Categoria</th><th class="r" style="width:120px">Valor</th></tr></thead>
-      <tbody>${R.map(r=>`<tr id="impR${r.i}" class="${r.on?'':'off'}${r.ent?' entr':''}">
-        <td><input type="checkbox" ${r.on?'checked':''} onchange="impToggle(${r.i})" aria-label="Incluir ${esc(r.desc)}"></td>
-        <td><input type="date" value="${r.data}" onchange="impSet(${r.i},'data',this.value)"></td>
-        <td>
-          <input type="text" value="${esc(r.desc)}" oninput="impSet(${r.i},'desc',this.value)">
-          ${r.ent?'<span class="badge ent">entrada</span>':''}
-          <span class="via ${r.conf}" id="impVia${r.i}">${esc(r.via)}</span>
-          ${r.dupTxt?`<span class="via ${r.dupTipo==='dup'||r.dupTipo==='dupv'?'dupw':r.dupTipo==='habito'?'hab':'talvez'}">${esc(r.dupTxt)}</span>`:''}
-        </td>
-        <td><select onchange="impSet(${r.i},'catId',this.value)">${(r.ent?ORIGENS:S.cats).map(c=>
-            `<option value="${c.id}"${r.catId===c.id?' selected':''}>${esc(c.nome)}</option>`).join('')}</select></td>
-        <td class="r"><input type="number" step="0.01" min="0" value="${r.val}" onchange="impSet(${r.i},'val',this.value)" style="text-align:right"></td>
-      </tr>`).join('')}</tbody>
-    </table></div>
-    <div class="row compacta" style="margin-top:16px;align-items:center;gap:12px">
-      <button class="btn" id="impOk" style="flex:0 0 auto;width:max-content" type="button" onclick="impConfirmar()">Adicionar ${on.length} transação(ões) · ${BRL2(soma)}</button>
+    <div class="row compacta" style="margin:2px 0 20px;flex-wrap:wrap">
+      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impPreset('tudo')">Extrato inteiro</button>
+      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impPreset('mes')">Só ${mesCurto(S.cfg.mesAtivo)}</button>
+      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impPreset('30')">Últimos 30 dias</button>
+      <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impPreset('15')">Últimos 15 dias</button>
+    </div>
+
+    <div class="totbar">
+      <div class="tb"><span>Saídas no período</span><b class="sai">${BRL2(_imp.totalSai)}</b><i>${sai.length} lançamento(s)</i></div>
+      <div class="tb"><span>Entradas no período</span><b class="ent">${BRL2(_imp.totalEnt)}</b><i>${ent.length} lançamento(s)</i></div>
+      <div class="tb"><span>Fora do período</span><b>${fora}</b><i>${fora?'não entram nesta importação':'nada ficou de fora'}</i></div>
+    </div>
+
+    <div class="row compacta" style="margin-top:20px">
+      <button class="btn" style="flex:0 0 auto;width:max-content" type="button"
+        onclick="impIrPasso(2)" ${R.length?'':'disabled'}>Continuar${R.length?` com ${R.length} lançamento(s)`:''}</button>
       <button class="btn g" style="flex:0 0 auto;width:max-content" type="button" onclick="impCancelar()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+/* ---- passo 2 ---- */
+function vImpCategorias(){
+  const des=impDesconhecidos(), tot=des.reduce((a,g)=>a+g.total,0);
+  return `<div class="card">
+    ${impCabeca(2)}
+    <p class="hint" style="margin:0 0 16px">
+      <b><span id="ensN">${des.length}</span> comércios</b> que eu não reconheci, somando ${BRL2(tot)}.
+      Escolha a categoria de cada um <b>uma vez</b> — vale para todas as linhas dele agora
+      e para todos os extratos daqui pra frente. O que você deixar em branco entra como Imprevistos.
+    </p>
+    <div class="scroll" style="max-height:420px"><table class="tbl">
+      <thead><tr><th>Comércio</th><th class="c">Lançamentos</th><th class="r">Soma</th><th style="width:190px">Categoria</th></tr></thead>
+      <tbody>${des.map(g=>`<tr id="ens_${esc(g.k)}">
+        <td><b>${esc(nomeLoja(g.desc))}</b>${g.n>1?`<span class="vals">${g.vals.slice(0,5).map(v=>BRL2(v)).join(' + ')}${g.vals.length>5?' + …':''}</span>`:''}</td>
+        <td class="c num">${g.n}</td>
+        <td class="r num" style="font-weight:700">${BRL2(g.total)}</td>
+        <td><select onchange="impEnsinar('${esc(g.k).replace(/'/g,"\\'")}',this.value)">
+          <option value="">escolher…</option>
+          ${S.cats.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}
+        </select></td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="row compacta" style="margin-top:18px">
+      <button class="btn" id="ensOk" style="flex:0 0 auto;width:max-content" type="button" onclick="impIrPasso(3)">Continuar</button>
+      <button class="btn g" style="flex:0 0 auto;width:max-content" type="button" onclick="impIrPasso(1)">Voltar</button>
+    </div>
+  </div>`;
+}
+
+/* ---- passo 3 ---- */
+function impTags(r){
+  const t=[];
+  if(r.parcTxt) t.push(`<span class="tag parc" title="parcela ${r.parcTxt}">${esc(r.parcTxt)}</span>`);
+  if(r.dupTipo==='dup'||r.dupTipo==='dupv') t.push(`<span class="tag dup" title="${esc(r.dupTxt)}">já lançado</span>`);
+  else if(r.dupTipo==='habito') t.push(`<span class="tag hab" title="${esc(r.dupTxt)}">recorrente</span>`);
+  else if(r.dupTipo==='talvez') t.push(`<span class="tag conf" title="${esc(r.dupTxt)}">conferir</span>`);
+  if(!r.ent&&r.conf==='baixa') t.push(`<span class="tag semcat" title="não reconheci este comércio">sem categoria</span>`);
+  return t.join('');
+}
+function impLinha(r){
+  return `<tr id="impR${r.id}" class="${r.on?'':'off'}${r.ent?' entr':''}">
+    <td><input type="checkbox" ${r.on?'checked':''} onchange="impToggle(${r.id})" aria-label="Incluir ${esc(r.desc)}"></td>
+    <td><input type="date" value="${r.data}" onchange="impSet(${r.id},'data',this.value)"></td>
+    <td><input type="text" value="${esc(r.desc)}" oninput="impSet(${r.id},'desc',this.value)">
+        ${impTags(r)?`<div class="tags">${impTags(r)}</div>`:''}</td>
+    <td><select onchange="impSet(${r.id},'catId',this.value)">${(r.ent?ORIGENS:S.cats).map(c=>
+        `<option value="${c.id}"${r.catId===c.id?' selected':''}>${esc(c.nome)}</option>`).join('')}</select></td>
+    <td>${r.ent?'<span class="semparc">—</span>':`<input type="number" min="1" max="120" placeholder="—" value="${r.parc||''}"
+        onchange="impSet(${r.id},'parc',this.value)" title="parcelas que ainda faltam">`}</td>
+    <td class="r"><input type="text" inputmode="decimal" value="${brlCampo(r.val)}"
+        onchange="impSet(${r.id},'val',this.value);this.value=brlCampo(numBr(this.value))"
+        style="text-align:right" aria-label="Valor"></td>
+  </tr>`;
+}
+function impSecao(g,titulo,ajuda,rows){
+  if(!rows.length) return '';
+  const total=rows.reduce((a,r)=>a+r.val,0), marcados=rows.filter(r=>r.on).length;
+  const ab=_imp.aberto[g];
+  return `<div class="secao ${ab?'aberta':''}">
+    <button class="sechead" type="button" onclick="impAbrir('${g}')">
+      <i class="seta">${ab?'▾':'▸'}</i>
+      <b>${titulo}</b>
+      <span class="cnt">${rows.length}</span>
+      <span class="tot">${BRL2(total)}</span>
+      <span class="mrk">${marcados} marcado(s)</span>
+    </button>
+    ${ab?`<div class="secbody">
+      <p class="secajuda">${ajuda}</p>
+      <div class="row compacta" style="margin-bottom:8px">
+        <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impGrupo('${g}',true)">Marcar todos</button>
+        <button class="btn sm g" style="flex:0 0 auto;width:max-content" type="button" onclick="impGrupo('${g}',false)">Desmarcar todos</button>
+      </div>
+      <div class="scroll impbox"><table class="tbl imp">
+        <thead><tr><th style="width:34px"></th><th style="width:140px">Data</th><th>Descrição</th>
+          <th style="width:160px">Categoria</th><th style="width:92px" class="c">Parcelas</th>
+          <th class="r" style="width:118px">Valor</th></tr></thead>
+        <tbody>${rows.map(impLinha).join('')}</tbody>
+      </table></div>
+    </div>`:''}
+  </div>`;
+}
+
+function vImpRevisao(){
+  const R=_imp.rows, on=R.filter(r=>r.on);
+  const soma=on.filter(r=>!r.ent).reduce((a,r)=>a+r.val,0);
+  const somaE=on.filter(r=>r.ent).reduce((a,r)=>a+r.val,0);
+  const novas=R.filter(r=>impGrupoDe(r)==='nova');
+  const dups=R.filter(r=>impGrupoDe(r)==='dup');
+  const ents=R.filter(r=>impGrupoDe(r)==='ent');
+  const sb=_imp.saldoBanco, so=_imp.sobra||[], soV=so.reduce((a,l)=>a+l.val,0);
+  const meu=S.lanc.filter(l=>l.data>=_imp.de1&&l.data<=_imp.de2&&!ehEnt(l)).reduce((a,l)=>a+l.val,0);
+  const dif=meu-(_imp.totalSai||0);
+
+  return `<div class="card">
+    ${impCabeca(3)}
+    <p class="hint" style="margin:0 0 16px">
+      ${dCurto(_imp.de1)} ${mCurto(_imp.de1)} a ${dCurto(_imp.de2)} ${mCurto(_imp.de2)} ·
+      Data, descrição, categoria, parcelas e valor são editáveis. O que você corrigir vira regra.
+    </p>
+
+    ${impSecao('nova','Novas saídas','Não estão no seu painel. Vêm marcadas para entrar.',novas)}
+    ${impSecao('dup','Já lançadas','O extrato tem, o seu painel também. Desmarcadas para não duplicar — marque se forem gastos diferentes.',dups)}
+    ${impSecao('ent','Entradas','Dinheiro que entrou. Desmarcadas porque, se a sua renda fixa está configurada, marcar o salário contaria em dobro.',ents)}
+
+    <details class="confer2">
+      <summary>Conferência com o banco${Math.abs(dif)>0.5?` · <b style="color:var(--amber)">diferença de ${BRL2(Math.abs(dif))}</b>`:' · bate certinho'}</summary>
+      <div class="cgrid" style="margin-top:12px">
+        <div><span>Saídas no extrato</span><b>${BRL2(_imp.totalSai||0)}</b></div>
+        <div><span>Saídas no seu painel</span><b class="${Math.abs(dif)>0.5?'alerta':''}">${BRL2(meu)}</b>
+          <i>${Math.abs(dif)>0.5?(dif>0?BRL2(dif)+' a mais que o banco':BRL2(-dif)+' a menos'):'bate com o banco'}</i></div>
+        ${sb!==null&&sb!==undefined?`<div><span>Saldo em conta (banco)</span><b class="ok">${BRL2(sb)}</b>
+          <i><button class="lnk" type="button" onclick="impUsarSaldo()">gravar no painel</button></i></div>`:''}
+      </div>
+      ${so.length?`<div class="sobra">
+        <b>${so.length} lançamento(s) do painel não aparecem neste extrato · ${BRL2(soV)}</b>
+        <p>Pode ser gasto de outra conta ou em dinheiro — ou o lançamento repetido que infla o mês.</p>
+        <div class="scroll" style="max-height:200px"><table class="tbl"><tbody>
+        ${so.map(l=>`<tr><td><b>${esc(l.desc||rotulo(l).nome)}</b></td>
+          <td>${esc(rotulo(l).nome)}</td>
+          <td class="c num">${dCurto(l.data)} ${mCurto(l.data)}</td>
+          <td class="r num" style="font-weight:700">${ehEnt(l)?'+ ':''}${BRL2(l.val)}</td>
+          <td class="r"><button class="btn sm d" style="flex:0 0 auto;width:max-content" type="button" onclick="impRemoverSobra(${l.id})">Remover</button></td></tr>`).join('')}
+        </tbody></table></div></div>`:'<p class="hint" style="margin:10px 0 0">Tudo que está no painel neste período tem correspondência no extrato.</p>'}
+      <div class="row compacta" style="margin-top:14px">
+        <button class="btn g" style="flex:0 0 auto;width:max-content" type="button" onclick="impAjustarTudo()">Deixar o painel igual ao banco</button>
+      </div>
+    </details>
+
+    <div class="rodape">
+      <div class="rtot"><span>Vai entrar</span><div id="impTot"><b>${BRL2(soma)}</b> em saídas${somaE?` · <b style="color:var(--acc)">${BRL2(somaE)}</b> em entradas`:''}</div></div>
+      <div class="row compacta">
+        <button class="btn" id="impOk" style="flex:0 0 auto;width:max-content" type="button" onclick="impConfirmar()">Adicionar ${on.length} lançamento(s)</button>
+        <button class="btn g" style="flex:0 0 auto;width:max-content" type="button" onclick="impIrPasso(1)">Voltar</button>
+        <button class="btn g" style="flex:0 0 auto;width:max-content" type="button" onclick="impCancelar()">Cancelar</button>
+      </div>
     </div>
   </div>`;
 }

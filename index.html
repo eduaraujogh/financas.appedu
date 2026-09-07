@@ -366,6 +366,11 @@ input[aria-invalid="true"]{border-color:var(--red)}
 .tb b.sai{color:var(--ink)}
 .tb b.ent{color:var(--acc)}
 .tb i.catlin{display:flex;align-items:center;gap:7px}
+.tb i.conta{display:flex;flex-wrap:wrap;gap:0 6px;color:var(--txt-2,var(--muted))}
+.tb i.conta .ent{color:var(--acc)} .tb i.conta .sai{color:var(--red)}
+.tb i.alerta{color:var(--warn,#FBBF24);line-height:1.45}
+.lk{background:none;border:0;padding:0;margin:0;font:inherit;color:var(--acc);
+    text-decoration:underline;cursor:pointer;display:inline}
 .tb i.catlin i.pt{width:8px;height:8px;border-radius:50%;flex:0 0 auto;display:block;margin:0}
 .f3{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:10px}
 @media(max-width:900px){.f3{grid-template-columns:1fr}}
@@ -725,14 +730,20 @@ const ORIGENS=[{id:'sal',nome:'Salário',cor:'#34D399',ic:'▲'},{id:'fre',nome:
   {id:'ven',nome:'Venda',cor:'#F472B6',ic:'⇄'},{id:'out',nome:'Outra entrada',cor:'#878D97',ic:'+'}];
 const orig=id=>ORIGENS.find(o=>o.id===id)||ORIGENS[5];
 const ehEnt=l=>l.tipo==='e';
-/* Saldo em conta = o saldo conferido no extrato mais tudo que foi lançado
-   depois daquela data. É o número que dá para comparar com o app do banco. */
-function saldoConta(){
+/* Saldo em conta NÃO é um saldo conferido: é uma projeção. Parte do último
+   saldo que veio do extrato e aplica tudo que foi lançado depois. Só bate com
+   o app do banco se todo gasto do período já estiver lançado aqui — por isso
+   o cartão mostra a conta inteira e avisa quando a conferência está velha. */
+function saldoContaDet(){
   if(!S.cfg.contaEm) return null;
-  const mov=S.lanc.filter(l=>l.data>S.cfg.contaEm)
-                  .reduce((a,l)=>a+(ehEnt(l)?l.val:-l.val),0);
-  return (+S.cfg.conta||0)+mov;
+  const dep=S.lanc.filter(l=>l.data>S.cfg.contaEm);
+  const ent=dep.filter(ehEnt).reduce((a,l)=>a+l.val,0);
+  const sai=dep.filter(l=>!ehEnt(l)).reduce((a,l)=>a+l.val,0);
+  const base=+S.cfg.conta||0;
+  const dias=Math.max(0,Math.round((new Date(hoje())-new Date(S.cfg.contaEm))/864e5));
+  return {base,ent,sai,n:dep.length,dias,saldo:base+ent-sai};
 }
+function saldoConta(){ const d=saldoContaDet(); return d?d.saldo:null; }
 const rotulo=l=>ehEnt(l)?orig(l.catId):cat(l.catId);
 let _tipoNovo='s';
 const snap=()=>JSON.parse(JSON.stringify(S));
@@ -1242,7 +1253,7 @@ function vLanc(I){
         const porC={}; saidas.forEach(l=>porC[l.catId]=(porC[l.catId]||0)+l.val);
         const top=Object.entries(porC).sort((a,b)=>b[1]-a[1])[0];
         const tc=top?cat(top[0]):null;
-        const sc=saldoConta();
+        const sd=saldoContaDet(); const sc=sd?sd.saldo:null;
         return `<div class="totbar">
           <div class="tb"><span>Entradas ${filtrado?'(filtrado)':'no período'}</span>
             <b class="ent">${oculto(BRL2(somaE))}</b>
@@ -1257,11 +1268,17 @@ function vLanc(I){
                   <i class="catlin"><i class="pt" style="background:${tc.cor}"></i>${esc(tc.nome)} · ${somaS>0?(top[1]/somaS*100).toFixed(0):0}% das saídas</i>`
                 :`<b>—</b><i>nenhuma saída no período</i>`}</div>
 
-          <div class="tb forte"><span>Saldo na carteira</span>
+          <div class="tb forte"><span>Saldo previsto na conta</span>
             ${sc===null
               ?`<b>—</b><i>importe um extrato e clique em “usar como saldo do painel”</i>`
               :`<b style="color:${sc>=0?'var(--acc)':'var(--red)'}">${oculto(BRL2(sc))}</b>
-                <i>conferido com o banco em ${dCurto(S.cfg.contaEm)} ${mCurto(S.cfg.contaEm)}</i>`}</div>
+                <i class="conta">${oculto(BRL2(sd.base))} em ${dCurto(S.cfg.contaEm)} ${mCurto(S.cfg.contaEm)}
+                   ${sd.ent?`<span class="ent">+ ${oculto(BRL2(sd.ent))}</span>`:''}
+                   ${sd.sai?`<span class="sai">− ${oculto(BRL2(sd.sai))}</span>`:''}</i>
+                ${sd.dias>=7
+                  ?`<i class="alerta">Só bate com o banco se nada destes ${sd.dias} dias ficou de fora.
+                     <button class="lk" type="button" onclick="abrirImport()">Reconferir com extrato</button></i>`
+                  :`<i>projeção a partir do extrato, não o saldo do banco</i>`}`}</div>
         </div>`})()}
       <div class="f3" style="margin-bottom:16px">
         <div><label for="fq" class="sr">Buscar</label>
